@@ -347,7 +347,7 @@ footer {
         var uptime = s.uptime_30d_pct !== null && s.uptime_30d_pct !== undefined
           ? s.uptime_30d_pct.toFixed(2) + '%'
           : '—';
-        var latency = s.status === 'down' ? '—' : s.latency_ms + ' ms';
+        var latency = s.latency_ms > 0 ? s.latency_ms + ' ms' : '—';
 
         var row = document.createElement('div');
         row.className = 'service-row';

@@ -9,8 +9,9 @@ use anyhow::{Context, Result};
 use axum::routing::{get, post};
 use axum::Router;
 use dashmap::DashMap;
+use sqlx::postgres::PgPoolOptions;
 use state::AppState;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::Duration;
 use tower_http::trace::TraceLayer;
 
@@ -28,8 +29,14 @@ async fn main() -> Result<()> {
     let services = config::load_services(&app_config.services_config_path)?;
     tracing::info!("loaded {} services from {}", services.len(), app_config.services_config_path);
 
-    let conn = db::init(&app_config.db_path)?;
-    tracing::info!("database initialized at {}", app_config.db_path);
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect(&app_config.database_url)
+        .await
+        .context("failed to connect to PostgreSQL")?;
+
+    db::init(&pool).await?;
+    tracing::info!("database initialized");
 
     let http_client = reqwest::Client::builder()
         .timeout(Duration::from_secs(10))
@@ -42,7 +49,7 @@ async fn main() -> Result<()> {
     let state = Arc::new(AppState {
         services,
         states: DashMap::new(),
-        db: Mutex::new(conn),
+        db: pool,
         http_client,
         config: app_config.clone(),
     });
@@ -53,12 +60,10 @@ async fn main() -> Result<()> {
     tokio::spawn(async move {
         loop {
             tokio::time::sleep(Duration::from_secs(3600)).await;
-            if let Ok(conn) = cleanup_state.db.lock() {
-                match db::cleanup_old_checks(&conn, 90) {
-                    Ok(n) if n > 0 => tracing::info!("cleaned up {n} old check records"),
-                    Err(e) => tracing::error!("cleanup failed: {e}"),
-                    _ => {}
-                }
+            match db::cleanup_old_checks(&cleanup_state.db, 90).await {
+                Ok(n) if n > 0 => tracing::info!("cleaned up {n} old check records"),
+                Err(e) => tracing::error!("cleanup failed: {e}"),
+                _ => {}
             }
         }
     });

@@ -1,14 +1,33 @@
 services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: status-board-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: status
+      POSTGRES_PASSWORD: status
+      POSTGRES_DB: status
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U status"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   status-board:
     build: .
     container_name: status-board
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "9022:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
-      - ./data:/app/data
       - ./services.json:/app/services.json:ro
     environment:
+      - DATABASE_URL=postgres://status:status@postgres:5432/status
       - SITE_TITLE=${SITE_TITLE:-Status Board}
       - SITE_URL=${SITE_URL:-}
       - FOOTER_TEXT=${FOOTER_TEXT:-Powered by Status Board · Rust/Axum}
@@ -17,3 +36,6 @@ services:
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
       - ADMIN_TOKEN=${ADMIN_TOKEN:-}
       - RUST_LOG=${RUST_LOG:-info,status_board=info}
+
+volumes:
+  pgdata:

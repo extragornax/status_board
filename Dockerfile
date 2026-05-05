@@ -18,10 +18,7 @@ WORKDIR /app
 COPY --from=builder /app/target/release/status_board /app/status_board
 COPY services.json /app/services.json
 
-RUN mkdir -p /app/data
-
 ENV PORT=3000
-ENV DB_PATH=data/status.db
 ENV RUST_LOG=info,status_board=info
 ENV SERVICES_CONFIG=services.json
 

@@ -1,9 +1,9 @@
 use crate::config::{AppConfig, ServiceConfig};
 use chrono::{DateTime, Utc};
 use dashmap::DashMap;
-use rusqlite::Connection;
 use serde::Serialize;
-use std::sync::{Arc, Mutex};
+use sqlx::PgPool;
+use std::sync::Arc;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -36,7 +36,7 @@ pub struct ServiceState {
 pub struct AppState {
     pub services: Vec<ServiceConfig>,
     pub states: DashMap<String, ServiceState>,
-    pub db: Mutex<Connection>,
+    pub db: PgPool,
     pub http_client: reqwest::Client,
     pub config: AppConfig,
 }

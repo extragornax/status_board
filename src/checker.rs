@@ -50,17 +50,17 @@ async fn process_check(
     let latency_ms = elapsed.as_millis() as u32;
     let now = Utc::now();
 
-    let (new_status, error_msg, http_code) = match &result {
+    let (new_status, error_msg, http_code, got_response) = match &result {
         Ok(resp) => {
             let code = resp.status().as_u16();
             if resp.status().is_success() {
                 if latency_ms > 3000 {
-                    (Status::Degraded, None, Some(code))
+                    (Status::Degraded, None, Some(code as i32), true)
                 } else {
-                    (Status::Up, None, Some(code))
+                    (Status::Up, None, Some(code as i32), true)
                 }
             } else {
-                (Status::Down, Some(format!("HTTP {code}")), Some(code))
+                (Status::Down, Some(format!("HTTP {code}")), Some(code as i32), true)
             }
         }
         Err(e) => {
@@ -71,20 +71,19 @@ async fn process_check(
             } else {
                 e.to_string()
             };
-            (Status::Down, Some(msg), None)
+            (Status::Down, Some(msg), None, false)
         }
     };
 
-    if let Ok(conn) = state.db.lock() {
-        let _ = db::insert_check(
-            &conn,
-            &service.id,
-            &new_status.to_string(),
-            if new_status == Status::Down { None } else { Some(latency_ms) },
-            error_msg.as_deref(),
-            http_code,
-        );
-    }
+    let _ = db::insert_check(
+        &state.db,
+        &service.id,
+        &new_status.to_string(),
+        if got_response { Some(latency_ms as i32) } else { None },
+        error_msg.as_deref(),
+        http_code,
+    )
+    .await;
 
     let previous = state.states.get(&service.id).map(|s| s.clone());
     let (prev_status, prev_consecutive_failures, prev_last_change) = match &previous {
@@ -111,7 +110,7 @@ async fn process_check(
         service.id.clone(),
         ServiceState {
             status: effective_status,
-            latency_ms: if effective_status == Status::Down { 0 } else { latency_ms },
+            latency_ms: if got_response { latency_ms } else { 0 },
             last_check: now,
             last_change,
             consecutive_failures,
@@ -123,18 +122,16 @@ async fn process_check(
         return;
     }
 
-    if let Ok(conn) = state.db.lock() {
-        match effective_status {
-            Status::Down => {
-                let _ = db::open_incident(&conn, &service.id, "down", error_msg.as_deref());
-            }
-            Status::Degraded => {
-                let _ = db::close_incident(&conn, &service.id);
-                let _ = db::open_incident(&conn, &service.id, "degraded", None);
-            }
-            Status::Up => {
-                let _ = db::close_incident(&conn, &service.id);
-            }
+    match effective_status {
+        Status::Down => {
+            let _ = db::open_incident(&state.db, &service.id, "down", error_msg.as_deref()).await;
+        }
+        Status::Degraded => {
+            let _ = db::close_incident(&state.db, &service.id).await;
+            let _ = db::open_incident(&state.db, &service.id, "degraded", None).await;
+        }
+        Status::Up => {
+            let _ = db::close_incident(&state.db, &service.id).await;
         }
     }
 

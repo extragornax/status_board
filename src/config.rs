@@ -14,7 +14,7 @@ pub struct ServiceConfig {
 #[derive(Debug, Clone)]
 pub struct AppConfig {
     pub port: u16,
-    pub db_path: String,
+    pub database_url: String,
     pub check_interval_secs: u64,
     pub telegram_bot_token: Option<String>,
     pub telegram_chat_id: Option<String>,
@@ -37,7 +37,8 @@ pub fn load_env_config() -> AppConfig {
 
     AppConfig {
         port,
-        db_path: std::env::var("DB_PATH").unwrap_or_else(|_| "data/status.db".into()),
+        database_url: std::env::var("DATABASE_URL")
+            .unwrap_or_else(|_| "postgres://status:status@localhost:5432/status".into()),
         check_interval_secs: std::env::var("CHECK_INTERVAL_SECS")
             .unwrap_or_else(|_| "60".into())
             .parse()

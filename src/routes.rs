@@ -28,10 +28,6 @@ pub async fn health() -> &'static str {
 pub async fn api_status(
     State(state): State<SharedState>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    let conn = state.db.lock().map_err(|e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, format!("db lock: {e}"))
-    })?;
-
     let mut services = Vec::new();
     let mut up_count = 0u32;
     let total = state.services.len() as u32;
@@ -48,12 +44,15 @@ pub async fn api_status(
             up_count += 1;
         }
 
-        let uptime = db::get_uptime_pct(&conn, &svc.id).unwrap_or(None);
+        let uptime = db::get_uptime_pct(&state.db, &svc.id)
+            .await
+            .unwrap_or(None);
 
-        let last_incident = db::get_service_incidents(&conn, &svc.id, 1)
+        let last_incident = db::get_service_incidents(&state.db, &svc.id, 1)
+            .await
             .ok()
             .and_then(|v| v.into_iter().next())
-            .map(|i| i.started_at);
+            .map(|i| i.started_at.to_rfc3339());
 
         services.push(ServiceStatusJson {
             id: svc.id.clone(),
@@ -111,37 +110,29 @@ pub async fn api_status_detail(
         None => (Status::Up, 0),
     };
 
-    let conn = state.db.lock().map_err(|e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, format!("db lock: {e}"))
-    })?;
+    let uptime = db::get_uptime_pct(&state.db, &id)
+        .await
+        .unwrap_or(None);
 
-    let uptime = db::get_uptime_pct(&conn, &id).unwrap_or(None);
-
-    let latency_24h = db::get_latency_history(&conn, &id, 1440)
+    let latency_24h = db::get_latency_history(&state.db, &id, 1440)
+        .await
         .unwrap_or_default()
         .into_iter()
-        .map(|(time, ms)| LatencyPoint { time, ms })
+        .map(|(time, ms)| LatencyPoint {
+            time: time.to_rfc3339(),
+            ms,
+        })
         .collect();
 
-    let recent_incidents = db::get_service_incidents(&conn, &id, 10)
+    let recent_incidents = db::get_service_incidents(&state.db, &id, 10)
+        .await
         .unwrap_or_default()
         .into_iter()
         .map(|i| {
-            let duration_secs = match (&i.resolved_at, &i.started_at) {
-                (Some(resolved), started) => {
-                    chrono::DateTime::parse_from_rfc3339(resolved)
-                        .ok()
-                        .and_then(|r| {
-                            chrono::DateTime::parse_from_rfc3339(started)
-                                .ok()
-                                .map(|s| (r - s).num_seconds())
-                        })
-                }
-                _ => None,
-            };
+            let duration_secs = i.resolved_at.map(|r| (r - i.started_at).num_seconds());
             IncidentJson {
-                started_at: i.started_at,
-                resolved_at: i.resolved_at,
+                started_at: i.started_at.to_rfc3339(),
+                resolved_at: i.resolved_at.map(|r| r.to_rfc3339()),
                 duration_secs,
                 kind: i.kind,
                 error: i.error,
@@ -166,13 +157,11 @@ pub async fn api_status_detail(
 pub async fn api_history(
     State(state): State<SharedState>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    let conn = state.db.lock().map_err(|e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, format!("db lock: {e}"))
-    })?;
-
     let mut history = Vec::new();
     for svc in &state.services {
-        let daily = db::get_daily_uptime(&conn, &svc.id, 90).unwrap_or_default();
+        let daily = db::get_daily_uptime(&state.db, &svc.id, 90)
+            .await
+            .unwrap_or_default();
         let days: Vec<DayUptime> = daily
             .into_iter()
             .map(|(date, pct)| DayUptime {
@@ -195,16 +184,14 @@ pub async fn api_incidents(
     State(state): State<SharedState>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    let limit: u32 = params
+    let limit: i64 = params
         .get("limit")
         .and_then(|v| v.parse().ok())
         .unwrap_or(20);
 
-    let conn = state.db.lock().map_err(|e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, format!("db lock: {e}"))
-    })?;
-
-    let incidents = db::get_incidents(&conn, limit).unwrap_or_default();
+    let incidents = db::get_incidents(&state.db, limit)
+        .await
+        .unwrap_or_default();
 
     let name_map: HashMap<&str, &str> = state
         .services
@@ -215,18 +202,7 @@ pub async fn api_incidents(
     let body: Vec<IncidentListJson> = incidents
         .into_iter()
         .map(|i| {
-            let duration_secs = match (&i.resolved_at, &i.started_at) {
-                (Some(resolved), started) => {
-                    chrono::DateTime::parse_from_rfc3339(resolved)
-                        .ok()
-                        .and_then(|r| {
-                            chrono::DateTime::parse_from_rfc3339(started)
-                                .ok()
-                                .map(|s| (r - s).num_seconds())
-                        })
-                }
-                _ => None,
-            };
+            let duration_secs = i.resolved_at.map(|r| (r - i.started_at).num_seconds());
             IncidentListJson {
                 service_id: i.service_id.clone(),
                 service_name: name_map
@@ -234,8 +210,8 @@ pub async fn api_incidents(
                     .unwrap_or(&"unknown")
                     .to_string(),
                 kind: i.kind,
-                started_at: i.started_at,
-                resolved_at: i.resolved_at,
+                started_at: i.started_at.to_rfc3339(),
+                resolved_at: i.resolved_at.map(|r| r.to_rfc3339()),
                 duration_secs,
                 error: i.error,
             }
@@ -312,7 +288,7 @@ struct ServiceDetailJson {
 #[derive(Serialize)]
 struct LatencyPoint {
     time: String,
-    ms: Option<u32>,
+    ms: Option<i32>,
 }
 
 #[derive(Serialize)]
