@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{SITE_TITLE}}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Fraunces:opsz,wght@9..144,400;9..144,500&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #F3ECD9;
+  --paper-2: #EADFBE;
+  --ink: #0E1424;
+  --ink-soft: #2A2F3E;
+  --mustard: #D9A326;
+  --vermilion: #E54B2A;
+  --teal: #2C6B7E;
+  --rule: rgba(14,20,36,.18);
+  --font-display: 'Bricolage Grotesque', sans-serif;
+  --font-body: 'Fraunces', serif;
+  --font-mono: 'Space Mono', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  min-height: 100vh;
+  position: relative;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  opacity: 0.28;
+  pointer-events: none;
+  z-index: 9999;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.5'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
+}
+.container { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem; position: relative; z-index: 1; }
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: 0.75rem;
+  margin-bottom: 2rem;
+}
+header h1 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.5rem;
+  letter-spacing: -0.02em;
+}
+header h1 a { color: inherit; text-decoration: none; }
+header .refresh-btn {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  background: none;
+  border: 1px solid var(--rule);
+  padding: 0.25rem 0.75rem;
+  cursor: pointer;
+  color: var(--ink-soft);
+  border-radius: 2px;
+}
+header .refresh-btn:hover { border-color: var(--ink); color: var(--ink); }
+
+.global-banner {
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 2rem;
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--paper);
+}
+.global-banner.operational { background: var(--teal); }
+.global-banner.partial_degradation { background: var(--mustard); color: var(--ink); }
+.global-banner.partial_outage { background: var(--vermilion); }
+.global-banner.major_outage { background: var(--vermilion); }
+.global-banner h2 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.global-banner .counter {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+}
+
+.category-section { margin-bottom: 2rem; }
+.category-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.category-header h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+}
+.category-header .count {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+}
+
+.service-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--rule);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.service-row:hover { background: rgba(14,20,36,.04); }
+.service-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dot.up { background: var(--teal); }
+.dot.degraded { background: var(--mustard); }
+.dot.down { background: var(--vermilion); }
+.service-latency, .service-uptime {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+  text-align: right;
+  min-width: 60px;
+}
+.service-link {
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+  text-decoration: none;
+}
+.service-link:hover { color: var(--ink); }
+
+.service-detail {
+  display: none;
+  padding: 1rem 0 1rem 1.5rem;
+  border-bottom: 1px solid var(--rule);
+}
+.service-detail.open { display: block; }
+.service-detail h4 {
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+  margin-bottom: 0.5rem;
+}
+.latency-chart { margin-bottom: 1rem; }
+.detail-incidents {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+}
+.detail-incidents div { padding: 0.15rem 0; }
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: 0.5rem;
+  margin: 2.5rem 0 1rem;
+}
+.section-header h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.history-row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.35rem 0;
+}
+.history-label {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.history-bar svg { display: block; width: 100%; height: 28px; }
+
+.incident-row {
+  display: grid;
+  grid-template-columns: 140px 120px 1fr auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+}
+.incident-type {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  border-radius: 2px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.incident-type.down { background: var(--vermilion); color: var(--paper); }
+.incident-type.degraded { background: var(--mustard); color: var(--ink); }
+
+footer {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 2px solid var(--ink);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+}
+#last-updated { opacity: 0.6; }
+
+@media (max-width: 640px) {
+  .container { padding: 1rem; }
+  .service-row { grid-template-columns: 1fr auto auto; gap: 0.5rem; }
+  .service-link { display: none; }
+  .incident-row { grid-template-columns: 1fr 1fr; gap: 0.25rem; }
+  .history-row { grid-template-columns: 100px 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1><a href="/">{{SITE_TITLE}}</a></h1>
+    <button class="refresh-btn" onclick="fetchStatus()">refresh</button>
+  </header>
+
+  <div id="global-banner" class="global-banner operational">
+    <h2 id="global-text">Loading...</h2>
+    <span class="counter" id="global-counter"></span>
+  </div>
+
+  <div id="services-grid"></div>
+
+  <div class="section-header"><h3>90-day history</h3></div>
+  <div id="history-section"></div>
+
+  <div class="section-header"><h3>Incidents</h3></div>
+  <div id="incidents-section"></div>
+
+  <footer>
+    <span>{{FOOTER_TEXT}}</span>
+    <span id="last-updated"></span>
+  </footer>
+</div>
+
+<script>
+(function() {
+  var POLL_INTERVAL = 30000;
+  var lastFetch = null;
+  var openDetail = null;
+
+  var globalLabels = {
+    operational: 'All systems operational',
+    partial_degradation: 'Partial degradation',
+    partial_outage: 'Partial outage',
+    major_outage: 'Major outage'
+  };
+
+  function fetchStatus() {
+    fetch('/api/status').then(function(res) { return res.json(); }).then(function(data) {
+      lastFetch = Date.now();
+      renderBanner(data);
+      renderServices(data.services);
+    }).catch(function(e) { console.error('fetch status failed:', e); });
+  }
+
+  function fetchHistory() {
+    fetch('/api/history').then(function(res) { return res.json(); }).then(function(data) {
+      renderHistory(data);
+    }).catch(function(e) { console.error('fetch history failed:', e); });
+  }
+
+  function fetchIncidents() {
+    fetch('/api/incidents?limit=20').then(function(res) { return res.json(); }).then(function(data) {
+      renderIncidents(data);
+    }).catch(function(e) { console.error('fetch incidents failed:', e); });
+  }
+
+  function renderBanner(data) {
+    var el = document.getElementById('global-banner');
+    el.className = 'global-banner ' + data.global;
+    document.getElementById('global-text').textContent = globalLabels[data.global] || data.global;
+    document.getElementById('global-counter').textContent = data.up_count + '/' + data.total + ' up';
+  }
+
+  function renderServices(services) {
+    var grid = document.getElementById('services-grid');
+    var categories = {};
+    services.forEach(function(s) {
+      if (!categories[s.category]) categories[s.category] = [];
+      categories[s.category].push(s);
+    });
+
+    grid.innerHTML = '';
+    Object.keys(categories).sort().forEach(function(cat) {
+      var svcs = categories[cat];
+      var section = document.createElement('div');
+      section.className = 'category-section';
+
+      var header = document.createElement('div');
+      header.className = 'category-header';
+      header.innerHTML = '<h3>' + esc(cat) + '</h3><span class="count">' + svcs.length + ' service' + (svcs.length > 1 ? 's' : '') + '</span>';
+      section.appendChild(header);
+
+      svcs.forEach(function(s) {
+        var uptime = s.uptime_30d_pct !== null && s.uptime_30d_pct !== undefined
+          ? s.uptime_30d_pct.toFixed(2) + '%'
+          : '—';
+        var latency = s.status === 'down' ? '—' : s.latency_ms + ' ms';
+
+        var row = document.createElement('div');
+        row.className = 'service-row';
+        row.setAttribute('data-id', s.id);
+        row.innerHTML =
+          '<div class="service-name"><span class="dot ' + s.status + '"></span>' + esc(s.name) + '</div>' +
+          '<span class="service-latency">' + latency + '</span>' +
+          '<span class="service-uptime">' + uptime + '</span>' +
+          '<a class="service-link" href="' + esc(s.url) + '" target="_blank" rel="noopener">↗</a>';
+        row.addEventListener('click', function(e) {
+          if (e.target.tagName === 'A') return;
+          toggleDetail(s.id);
+        });
+        section.appendChild(row);
+
+        var detail = document.createElement('div');
+        detail.className = 'service-detail';
+        detail.id = 'detail-' + s.id;
+        section.appendChild(detail);
+      });
+
+      grid.appendChild(section);
+    });
+
+    if (openDetail) {
+      var el = document.getElementById('detail-' + openDetail);
+      if (el) { el.classList.add('open'); loadDetail(openDetail); }
+    }
+  }
+
+  function toggleDetail(id) {
+    var el = document.getElementById('detail-' + id);
+    if (!el) return;
+
+    if (el.classList.contains('open')) {
+      el.classList.remove('open');
+      openDetail = null;
+      return;
+    }
+
+    document.querySelectorAll('.service-detail.open').forEach(function(d) { d.classList.remove('open'); });
+    el.classList.add('open');
+    openDetail = id;
+    loadDetail(id);
+  }
+
+  function loadDetail(id) {
+    var el = document.getElementById('detail-' + id);
+    if (!el) return;
+    el.innerHTML = '<div style="font-family:var(--font-mono);font-size:0.75rem;color:var(--ink-soft)">Loading...</div>';
+
+    fetch('/api/status/' + encodeURIComponent(id)).then(function(res) { return res.json(); }).then(function(data) {
+      var html = '<h4>Latency (24h)</h4><div class="latency-chart">' + renderLatencyChart(data.latency_24h) + '</div>';
+      html += '<h4>Recent incidents</h4><div class="detail-incidents">';
+      if (data.recent_incidents.length === 0) {
+        html += '<div>No incidents</div>';
+      } else {
+        data.recent_incidents.forEach(function(inc) {
+          var dur = inc.duration_secs ? formatDuration(inc.duration_secs) : 'ongoing';
+          html += '<div><span class="incident-type ' + inc.kind + '">' + inc.kind + '</span> ' + formatTime(inc.started_at) + ' — ' + dur;
+          if (inc.error) html += ' — ' + esc(inc.error);
+          html += '</div>';
+        });
+      }
+      html += '</div>';
+      el.innerHTML = html;
+    }).catch(function() {
+      el.innerHTML = '<div style="color:var(--vermilion)">Failed to load details</div>';
+    });
+  }
+
+  function renderLatencyChart(points) {
+    if (!points || points.length === 0) return '<div style="font-family:var(--font-mono);font-size:0.75rem;color:var(--ink-soft)">No data yet</div>';
+    var filtered = points.filter(function(p) { return p.ms !== null; }).slice(0, 120);
+    if (filtered.length === 0) return '<div style="font-family:var(--font-mono);font-size:0.75rem;color:var(--ink-soft)">No data yet</div>';
+
+    var max = Math.max.apply(null, filtered.map(function(p) { return p.ms; }));
+    if (max === 0) max = 1;
+    var w = filtered.length * 6;
+    var h = 60;
+    var svg = '<svg width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" style="max-width:100%">';
+    filtered.reverse().forEach(function(p, i) {
+      var barH = Math.max(2, (p.ms / max) * (h - 4));
+      var color = p.ms > 3000 ? '#D9A326' : '#2C6B7E';
+      svg += '<rect x="' + (i * 6) + '" y="' + (h - barH) + '" width="4" height="' + barH + '" rx="1" fill="' + color + '"><title>' + p.ms + 'ms</title></rect>';
+    });
+    svg += '</svg>';
+    return svg;
+  }
+
+  function renderHistory(data) {
+    var section = document.getElementById('history-section');
+    if (!data || data.length === 0) {
+      section.innerHTML = '<div style="font-family:var(--font-mono);font-size:0.75rem;color:var(--ink-soft);padding:0.5rem 0">No history data yet</div>';
+      return;
+    }
+
+    var html = '';
+    data.forEach(function(svc) {
+      html += '<div class="history-row">';
+      html += '<span class="history-label">' + esc(svc.name) + '</span>';
+      html += '<div class="history-bar">' + renderUptimeBar(svc.days) + '</div>';
+      html += '</div>';
+    });
+    section.innerHTML = html;
+  }
+
+  function renderUptimeBar(days) {
+    var totalSlots = 90;
+    var slotW = 7;
+    var w = totalSlots * slotW;
+    var svg = '<svg width="' + w + '" height="28" viewBox="0 0 ' + w + ' 28">';
+    for (var i = 0; i < totalSlots; i++) {
+      var day = days[i];
+      var color, title;
+      if (day) {
+        if (day.pct >= 99.9) { color = '#2C6B7E'; }
+        else if (day.pct >= 95.0) { color = '#D9A326'; }
+        else if (day.pct > 0) { color = '#E54B2A'; }
+        else { color = '#EADFBE'; }
+        title = day.date + ': ' + day.pct.toFixed(1) + '%';
+      } else {
+        color = '#EADFBE';
+        title = 'No data';
+      }
+      svg += '<rect x="' + (i * slotW) + '" y="4" width="5" height="20" rx="1" fill="' + color + '"><title>' + title + '</title></rect>';
+    }
+    svg += '</svg>';
+    return svg;
+  }
+
+  function renderIncidents(data) {
+    var section = document.getElementById('incidents-section');
+    if (!data || data.length === 0) {
+      section.innerHTML = '<div style="font-family:var(--font-mono);font-size:0.75rem;color:var(--ink-soft);padding:0.5rem 0">No incidents recorded</div>';
+      return;
+    }
+
+    var html = '';
+    data.forEach(function(inc) {
+      var dur = inc.duration_secs ? formatDuration(inc.duration_secs) : 'ongoing';
+      html += '<div class="incident-row">';
+      html += '<span>' + formatTime(inc.started_at) + '</span>';
+      html += '<span>' + esc(inc.service_name) + '</span>';
+      html += '<span><span class="incident-type ' + inc.kind + '">' + inc.kind + '</span></span>';
+      html += '<span>' + dur + '</span>';
+      html += '</div>';
+    });
+    section.innerHTML = html;
+  }
+
+  function formatTime(iso) {
+    try {
+      var d = new Date(iso);
+      return d.toISOString().slice(0, 16).replace('T', ' ');
+    } catch(e) { return iso; }
+  }
+
+  function formatDuration(secs) {
+    if (secs < 60) return secs + 's';
+    if (secs < 3600) return Math.floor(secs / 60) + 'min';
+    return Math.floor(secs / 3600) + 'h ' + Math.floor((secs % 3600) / 60) + 'min';
+  }
+
+  function esc(s) {
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function updateLastUpdated() {
+    if (!lastFetch) return;
+    var ago = Math.round((Date.now() - lastFetch) / 1000);
+    document.getElementById('last-updated').textContent = 'Updated ' + ago + 's ago';
+  }
+
+  window.fetchStatus = fetchStatus;
+
+  fetchStatus();
+  fetchHistory();
+  fetchIncidents();
+
+  setInterval(function() { fetchStatus(); fetchHistory(); fetchIncidents(); }, POLL_INTERVAL);
+  setInterval(updateLastUpdated, 1000);
+})();
+</script>
+</body>
+</html>

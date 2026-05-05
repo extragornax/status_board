@@ -1,0 +1,19 @@
+services:
+  status-board:
+    build: .
+    container_name: status-board
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+      - ./services.json:/app/services.json:ro
+    environment:
+      - SITE_TITLE=${SITE_TITLE:-Status Board}
+      - SITE_URL=${SITE_URL:-}
+      - FOOTER_TEXT=${FOOTER_TEXT:-Powered by Status Board · Rust/Axum}
+      - CHECK_INTERVAL_SECS=${CHECK_INTERVAL_SECS:-60}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - ADMIN_TOKEN=${ADMIN_TOKEN:-}
+      - RUST_LOG=${RUST_LOG:-info,status_board=info}

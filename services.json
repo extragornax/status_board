@@ -1,0 +1,100 @@
+[
+  {
+    "id": "gpx",
+    "name": "GPX → Graph",
+    "url": "https://gpx.extragornax.fr",
+    "category": "cycling",
+    "check": "status_code"
+  },
+  {
+    "id": "kahoot",
+    "name": "Kahoot Free",
+    "url": "https://kahoot.extragornax.fr/health",
+    "category": "party",
+    "check": "status_code"
+  },
+  {
+    "id": "dotwatcher",
+    "name": "Dotwatcher",
+    "url": "https://dotwatcher.extragornax.fr",
+    "category": "racing",
+    "check": "status_code"
+  },
+  {
+    "id": "brm",
+    "name": "BRM Maps",
+    "url": "https://brm.extragornax.fr",
+    "category": "cycling",
+    "check": "status_code"
+  },
+  {
+    "id": "meteo",
+    "name": "Meteo",
+    "url": "https://meteo.extragornax.fr",
+    "category": "cycling",
+    "check": "status_code"
+  },
+  {
+    "id": "ravito",
+    "name": "Ravito",
+    "url": "https://ravito.extragornax.fr",
+    "category": "cycling",
+    "check": "status_code"
+  },
+  {
+    "id": "strava",
+    "name": "Strava Stats",
+    "url": "https://strava.extragornax.fr",
+    "category": "fitness",
+    "check": "status_code"
+  },
+  {
+    "id": "countdown",
+    "name": "Countdown",
+    "url": "https://countdown.extragornax.fr",
+    "category": "event",
+    "check": "status_code"
+  },
+  {
+    "id": "plik",
+    "name": "Plik",
+    "url": "https://plik.extragornax.fr",
+    "category": "utility",
+    "check": "status_code"
+  },
+  {
+    "id": "mayojaune",
+    "name": "Mayo Jaune",
+    "url": "https://mayojaune.fr",
+    "category": "cycling",
+    "check": "status_code"
+  },
+  {
+    "id": "trace",
+    "name": "Trace",
+    "url": "https://trace.extragornax.fr",
+    "category": "safety",
+    "check": "status_code"
+  },
+  {
+    "id": "cyclo",
+    "name": "Cyclo Copains",
+    "url": "https://cyclo.extragornax.fr",
+    "category": "cycling",
+    "check": "status_code"
+  },
+  {
+    "id": "roulette",
+    "name": "Roulette Vélo",
+    "url": "https://roulette.extragornax.fr",
+    "category": "cycling",
+    "check": "status_code"
+  },
+  {
+    "id": "homepage",
+    "name": "extragornax.fr",
+    "url": "https://extragornax.fr",
+    "category": "meta",
+    "check": "status_code"
+  }
+]
