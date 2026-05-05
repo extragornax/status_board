@@ -20,7 +20,7 @@ services:
     container_name: status-board
     restart: unless-stopped
     ports:
-      - "9022:3000"
+      - "127.0.0.1:9022:3000"
     depends_on:
       postgres:
         condition: service_healthy
