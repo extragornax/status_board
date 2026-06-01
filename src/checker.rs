@@ -86,9 +86,9 @@ async fn process_check(
     .await;
 
     let previous = state.states.get(&service.id).map(|s| s.clone());
-    let (prev_status, prev_consecutive_failures, prev_last_change) = match &previous {
-        Some(s) => (Some(s.status), s.consecutive_failures, s.last_change),
-        None => (None, 0, now),
+    let (prev_status, prev_consecutive_failures, prev_consecutive_slow, prev_last_change) = match &previous {
+        Some(s) => (Some(s.status), s.consecutive_failures, s.consecutive_slow, s.last_change),
+        None => (None, 0, 0, now),
     };
 
     let consecutive_failures = if new_status == Status::Down {
@@ -97,7 +97,15 @@ async fn process_check(
         0
     };
 
+    let consecutive_slow = if new_status == Status::Degraded {
+        prev_consecutive_slow + 1
+    } else {
+        0
+    };
+
     let effective_status = if new_status == Status::Down && consecutive_failures < 3 {
+        prev_status.unwrap_or(Status::Up)
+    } else if new_status == Status::Degraded && consecutive_slow < 10 {
         prev_status.unwrap_or(Status::Up)
     } else {
         new_status
@@ -114,6 +122,7 @@ async fn process_check(
             last_check: now,
             last_change,
             consecutive_failures,
+            consecutive_slow,
             last_error: error_msg.clone(),
         },
     );

@@ -30,6 +30,7 @@ pub struct ServiceState {
     pub last_check: DateTime<Utc>,
     pub last_change: DateTime<Utc>,
     pub consecutive_failures: u32,
+    pub consecutive_slow: u32,
     pub last_error: Option<String>,
 }
 
